@@ -144,60 +144,12 @@ main{padding:calc(env(safe-area-inset-top) + 12px) 16px calc(var(--tab-h) + env(
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 12px);transform:translateX(-50%);background:var(--navy);color:var(--paper);padding:10px 16px;border-radius:12px;font-size:14px;z-index:30;max-width:calc(100% - 32px);box-shadow:0 10px 24px -10px rgba(0,0,0,.5)}
 .hint{font-size:12px;color:var(--muted);text-align:center;margin-top:16px}
 
-/* ---------- page header with Jim ---------- */
-.hdr{position:relative;background:var(--navy);color:var(--paper);margin:-12px -16px 30px;padding:12px 16px 18px;min-height:132px;display:flex;align-items:flex-end;z-index:1}
-.hdr-text{flex:1;min-width:0;padding-right:128px;position:relative;z-index:2}
-.hdr h1{color:var(--paper);font-size:27px;margin-top:10px;text-wrap:balance}
-.hdr .sub{color:#C9CEE6}
-.hdr .demo-pill{background:rgba(255,253,242,.12);box-shadow:inset 0 0 0 1px rgba(255,253,242,.25)}
-.jim{position:absolute;right:6px;bottom:0;width:138px;height:128px;padding:0;z-index:1}
-.jim img{position:absolute;right:0;bottom:0;width:138px;height:auto;display:block;transform-origin:50% 100%;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 22%);mask-image:linear-gradient(90deg,transparent 0,#000 22%)}
-.props{position:absolute;inset:0;z-index:2}
+/* ---------- page header ---------- */
+.hdr{position:relative;background:var(--navy);color:var(--paper);margin:-12px -16px 22px;padding:12px 16px 12px;display:flex;align-items:flex-start;gap:12px;z-index:1}
+.hdr-text{flex:1;min-width:0}
+.hdr h1{color:var(--paper);font-size:24px;line-height:1.1;margin:0;text-wrap:balance}
+.hdr .sub{color:#C9CEE6;margin:4px 0 0;font-size:14px}
+.hdr .demo-pill{flex:none;margin:0;background:rgba(255,253,242,.12);box-shadow:inset 0 0 0 1px rgba(255,253,242,.25)}
 .drips{position:absolute;left:0;right:0;top:100%;height:0}
-.drips i{position:absolute;top:-1px;width:6px;height:var(--h);background:var(--c);border-radius:0 0 4px 4px}
-.drips i:after{content:"";position:absolute;left:-1px;bottom:-4px;width:8px;height:8px;border-radius:50%;background:var(--c)}
-
-.p{position:absolute;opacity:0;pointer-events:none}
-.p svg{display:block;width:100%;height:100%}
-.tile-drop{top:22px;width:12px;height:12px;border-radius:3px;background:var(--c)}
-.note{left:48px;top:52px;width:20px;height:24px}
-.note svg{fill:var(--c)}
-.flash{left:-30px;top:-20px;width:200px;height:170px;background:radial-gradient(circle at 60% 45%,#fff 0,rgba(255,255,255,.85) 25%,rgba(255,255,255,0) 65%)}
-.spark{width:16px;height:16px}
-.spark svg{fill:var(--yellow)}
-.chatb{background:var(--paper);color:var(--navy);font-size:12px;font-weight:700;padding:3px 9px;border-radius:10px 10px 2px 10px;white-space:nowrap}
-.heart{top:96px;width:16px;height:15px}
-.heart svg{fill:var(--c)}
-.tent{top:100px;width:26px;height:19px;transform-origin:50% 100%}
-.tent svg{fill:var(--c)}
-
-/* Jim's moves, one per page */
-.hdr.play[data-anim=needs] .jim img{animation:nod 1.1s ease-in-out .7s 2 both}
-.hdr.play[data-anim=schedule] .jim img{animation:sway 1.8s ease-in-out both}
-.hdr.play[data-anim=photos] .jim img{animation:pose .5s ease-out .15s both}
-.hdr.play[data-anim=chat] .jim img{animation:lean 1.6s ease-in-out both}
-.hdr.play[data-anim=support] .jim img{animation:hop .55s ease-out 3 both}
-.hdr.play[data-anim=crews] .jim img{animation:rise .7s cubic-bezier(.2,1.4,.4,1) both}
-@keyframes nod{0%,100%{transform:none}35%{transform:translateY(4px) rotate(2deg)}65%{transform:translateY(-3px)}}
-@keyframes sway{0%,100%{transform:none}25%{transform:rotate(-5deg)}50%{transform:rotate(4deg)}75%{transform:rotate(-2deg)}}
-@keyframes pose{0%{transform:none;filter:none}40%{transform:scale(1.07) rotate(-2deg);filter:brightness(1.25)}100%{transform:none;filter:none}}
-@keyframes lean{0%,100%{transform:none}30%,70%{transform:rotate(-6deg) translateX(-4px)}}
-@keyframes hop{0%,100%{transform:none}40%{transform:translateY(-10px)}}
-@keyframes rise{from{transform:translateY(60px)}to{transform:none}}
-
-/* props */
-.hdr.play .tile-drop{animation:tileDrop 2.2s ease-out calc(var(--i)*90ms) both}
-.hdr.play .note{animation:noteUp 1.7s ease-out calc(var(--i)*260ms) both}
-.hdr.play .flash{animation:flash .5s ease-out .2s both}
-.hdr.play .spark{animation:spark .8s ease-out calc(.35s + var(--i)*90ms) both}
-.hdr.play .chatb{animation:chatPop 2.4s ease-out calc(var(--i)*380ms) both}
-.hdr.play .heart{animation:heartUp 1.8s ease-out calc(var(--i)*150ms) both}
-.hdr.play .tent{animation:tentUp 2.2s ease-out calc(.35s + var(--i)*140ms) both}
-@keyframes tileDrop{0%{opacity:0;transform:translateY(-60px)}25%{opacity:1;transform:translateY(0)}32%{transform:translateY(-4px)}38%,80%{opacity:1;transform:none}100%{opacity:0;transform:none}}
-@keyframes noteUp{0%{opacity:0;transform:translate(0,0) scale(.6)}20%{opacity:1}100%{opacity:0;transform:translate(var(--dx),-60px) rotate(-18deg) scale(1.1)}}
-@keyframes flash{0%,100%{opacity:0}30%{opacity:1}}
-@keyframes spark{0%{opacity:0;transform:scale(0) rotate(0)}50%{opacity:1;transform:scale(1.2) rotate(45deg)}100%{opacity:0;transform:scale(.4) rotate(90deg)}}
-@keyframes chatPop{0%{opacity:0;transform:scale(.3)}15%{opacity:1;transform:scale(1.08)}22%,80%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-6px)}}
-@keyframes heartUp{0%{opacity:0;transform:translate(0,0) scale(.5)}20%{opacity:1;transform:translate(4px,-14px) scale(1)}60%{transform:translate(-6px,-50px)}100%{opacity:0;transform:translate(6px,-84px) scale(.8)}}
-@keyframes tentUp{0%{opacity:0;transform:scaleY(0)}18%{opacity:1;transform:scaleY(1.15)}26%,80%{opacity:1;transform:none}100%{opacity:0;transform:none}}
-@media (prefers-reduced-motion:reduce){.hdr.play *{animation:none!important}}
+.drips i{position:absolute;top:-1px;width:5px;height:var(--h);background:var(--c);border-radius:0 0 4px 4px}
+.drips i:after{content:"";position:absolute;left:-1px;bottom:-3px;width:7px;height:7px;border-radius:50%;background:var(--c)}
