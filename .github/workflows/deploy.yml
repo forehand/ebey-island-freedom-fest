@@ -1,0 +1,46 @@
+# Publishes the Pitch In promo page at / and the prototype at /app to Azure Static Web Apps (Free plan).
+# Needs one repo secret: AZURE_STATIC_WEB_APPS_API_TOKEN (the Static Web App's deployment token).
+name: Deploy to Azure Static Web Apps
+
+on:
+  push:
+    branches: [main]
+    paths: [site/**, prototype/**, staticwebapp.config.json, .github/workflows/deploy.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SWA_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble site
+        run: |
+          mkdir -p dist/app
+          cp -r site/. dist/
+          cp -r prototype/index.html prototype/app.css prototype/app.js prototype/sw.js prototype/manifest.webmanifest prototype/assets dist/app/
+          cp staticwebapp.config.json dist/
+          find dist -type f | sort
+
+      - name: Skip when the deployment token is missing
+        if: env.SWA_TOKEN == ''
+        run: echo "::warning::Add the AZURE_STATIC_WEB_APPS_API_TOKEN secret to deploy."
+
+      - name: Deploy
+        if: env.SWA_TOKEN != ''
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ env.SWA_TOKEN }}
+          action: upload
+          app_location: dist
+          skip_app_build: true
+          skip_api_build: true

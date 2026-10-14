@@ -1,0 +1,15 @@
+{
+  "routes": [
+    { "route": "/app/sw.js", "headers": { "cache-control": "no-cache" } },
+    { "route": "/app", "redirect": "/app/", "statusCode": 301 }
+  ],
+  "mimeTypes": {
+    ".webmanifest": "application/manifest+json",
+    ".woff2": "font/woff2",
+    ".webp": "image/webp"
+  },
+  "globalHeaders": {
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin"
+  }
+}
