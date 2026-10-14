@@ -13,6 +13,7 @@ const DAY_IDX = { fri: 0, sat: 1, sun: 2, mon: 3 };
 const dayOf = (id) => DAYS.find((d) => d.id === id);
 const S = 'Shaman Stage', M = 'Main Stage';
 const t = (h, m = 0) => h * 60 + m;
+const CLOCK_MIN = t(8), CLOCK_MAX = t(23); // demo clock range: 8 AM to 11 PM
 const abs = (day, min) => DAY_IDX[day] * 1440 + min;
 const SETS = [
   ['fri', S, t(16), 'Thirsty For Space'], ['fri', S, t(19), 'Aladdin Road ~ Steven Padilla'], ['fri', S, t(20, 30), 'Duffy Owens'],
@@ -115,9 +116,9 @@ const SHIP = 6;
 const PALETTE = ['#2DB36B', '#2F63D6', '#F9D84A', '#F28B22', '#D62B34', '#8F72F0'];
 
 // ---------- state (persists in this browser; Reset demo clears it) ----------
-const KEY = 'pitchin-demo-v3';
+const KEY = 'pitchin-demo-v4';
 const fresh = () => ({
-  now: { day: 'mon', min: t(14, 30) }, role: 'helper',
+  now: { day: 'fri', min: CLOCK_MIN }, role: 'helper',
   stars: [], remind: {}, reminded: {}, shifts: [], cancelled: {}, cascade: true,
   claims: {}, posted: [], closed: {}, needFilter: 'all',
   msgs: {}, joined: {}, scheduleDay: null,
@@ -248,7 +249,7 @@ const screens = {
     <div class="section-h"><h2>On now</h2><a href="#schedule">Full schedule</a></div>
     <div class="now-grid">
       <div class="card"><span class="kick">Playing</span>${cur ? `<span class="tag stage">${cur.stage}</span>
-        <div class="act">${esc(cur.name)}</div><div class="sub">Until ${fmt(setEnd(cur))}</div>` : '<div class="act">Between sets</div>'}</div>
+        <div class="act">${esc(cur.name)}</div><div class="sub">Until ${fmt(setEnd(cur))}</div>` : daySets(st.now.day).some((s) => startOf(s) <= st.now.min) ? '<div class="act">Between sets</div>' : `<div class="act">No music yet</div><div class="sub">${next ? 'Starts at ' + fmt(startOf(next)) : 'No sets today'}</div>`}</div>
       <div class="card"><span class="kick">Up next</span>${next ? `<span class="tag stage">${next.stage}</span>
         <div class="act">${esc(next.name)}</div><div class="sub">${fmt(startOf(next))}${shiftOf(next) ? ' · moved' : ''}</div>` : '<div class="act">Done for today</div>'}</div>
     </div>
@@ -424,7 +425,6 @@ function render() {
 window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); });
 
 // ---------- demo clock ----------
-const CLOCK_MIN = t(8), CLOCK_MAX = t(23);
 function setClock(day, min) {
   const before = nowAbs();
   st.now = { day, min: Math.max(CLOCK_MIN, Math.min(CLOCK_MAX, min)) };
