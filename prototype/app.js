@@ -73,15 +73,49 @@ const SEED_MSGS = {
 
 const FUND = { raised: 8420, goal: 15000, donors: 163 }; // placeholder numbers
 const AMOUNTS = [10, 25, 50, 100];
+const COLORS = {
+  black: { name: 'Black', hex: '#1E1E21' }, navy: { name: 'Navy', hex: '#1F2B4D' }, forest: { name: 'Forest', hex: '#2E5B3E' },
+  gray: { name: 'Heather gray', hex: '#A9ADB3', light: true }, sun: { name: 'Sunflower', hex: '#EDB93C', light: true },
+  red: { name: 'Barn red', hex: '#A8382F' }, plum: { name: 'Plum', hex: '#583A6B' },
+};
+const SIZES = ['S', 'M', 'L', 'XL', '2XL', '3XL'];
 const PRODUCTS = [
-  { id: 'tee', name: 'Freedom Fest 2026 tee', price: 25, sizes: ['S', 'M', 'L', 'XL', '2XL', '3XL'], blurb: 'Black, flyer art on the front.' },
-  { id: 'stickers', name: 'Sticker pack', price: 5, blurb: 'Five weatherproof stickers.' },
+  { id: 'tee', kind: 'tee', name: 'Freedom Fest 2026 tee', short: 'tee', price: 25, colors: ['black', 'navy', 'forest', 'gray', 'sun', 'red'], blurb: 'Soft cotton, 2026 art on the chest.' },
+  { id: 'long', kind: 'long', name: 'Long sleeve tee', short: 'long sleeve', price: 32, colors: ['black', 'navy', 'forest', 'gray'], blurb: 'For the cool nights by the Shaman Stage.' },
+  { id: 'hoodie', kind: 'hoodie', name: 'Pullover hoodie', short: 'hoodie', price: 45, colors: ['black', 'navy', 'forest', 'gray', 'plum'], blurb: 'Heavyweight fleece with a front pocket.' },
 ];
+const lineName = (i) => { const p = PRODUCTS.find((x) => x.id === i.id); return p ? `${p.name} · ${COLORS[i.color].name} · ${i.size}` : 'Item'; };
+const pickOf = (p) => Object.assign({ color: p.colors[0], size: null }, (st.pick || {})[p.id]);
+
+// Garment drawings: one shape per kind, recolored per swatch, with the 2026 chest print.
+const shade = (hex, k) => { const n = parseInt(hex.slice(1), 16); const f = (v) => Math.max(0, Math.min(255, Math.round(v + (k < 0 ? v * k : (255 - v) * k)))); return '#' + [n >> 16, (n >> 8) & 255, n & 255].map((v) => f(v).toString(16).padStart(2, '0')).join(''); };
+function garment(kind, colorId) {
+  const c = COLORS[colorId], base = c.hex, dark = shade(base, -0.28), lite = shade(base, 0.14);
+  const ink = c.light ? '#0B1328' : '#FFF6D6', accent = c.light ? '#0B1328' : '#F9D84A';
+  const BODY = {
+    tee: 'M70 30 C80 43 120 43 130 30 L166 45 L186 86 L156 99 L148 84 L148 182 Q100 188 52 182 L52 84 L44 99 L14 86 L34 45 Z',
+    long: 'M70 30 C80 43 120 43 130 30 L164 44 Q178 52 182 80 L193 170 L170 174 L153 98 L148 92 L148 182 Q100 188 52 182 L52 92 L47 98 L30 174 L7 170 L18 80 Q22 52 36 44 Z',
+    hoodie: 'M66 40 L36 51 Q23 59 19 86 L9 168 L32 172 L50 102 L52 102 L52 182 Q100 188 148 182 L148 102 L150 102 L168 172 L191 168 L181 86 Q177 59 164 51 L134 40 Z',
+  }[kind];
+  const py = kind === 'hoodie' ? 70 : 76;
+  const stripe = PALETTE.map((p, i) => `<rect x="${76 + i * 8}" y="${py}" width="8" height="5" fill="${p}"/>`).join('');
+  const print = `<g font-family="Lilita One, sans-serif" text-anchor="middle">${stripe}<text x="100" y="${py + 22}" font-size="17" fill="${ink}">FREEDOM</text><text x="100" y="${py + 39}" font-size="17" fill="${ink}">FEST</text><text x="100" y="${py + 52}" font-size="10" fill="${accent}" letter-spacing="2">2026</text></g>`;
+  let extra = '';
+  if (kind === 'tee') extra = `<path d="M70 30 C80 45 120 45 130 30" fill="none" stroke="${dark}" stroke-width="5" stroke-linecap="round"/><path d="M52 84 L44 99 M148 84 L156 99" stroke="${dark}" stroke-width="2"/>`;
+  if (kind === 'long') extra = `<path d="M70 30 C80 45 120 45 130 30" fill="none" stroke="${dark}" stroke-width="5" stroke-linecap="round"/><path d="M8 162 L31 166 M192 162 L169 166" stroke="${dark}" stroke-width="5"/>`;
+  if (kind === 'hoodie') extra = `<path d="M66 40 Q62 8 100 6 Q138 8 134 40 Q120 56 100 56 Q80 56 66 40 Z" fill="${base}"/><path d="M78 37 Q80 18 100 17 Q120 18 122 37 Q112 47 100 47 Q88 47 78 37 Z" fill="${dark}"/>
+    <path d="M70 136 L130 136 L139 172 L61 172 Z" fill="${shade(base, -0.12)}" stroke="${dark}" stroke-width="1.5"/><path d="M93 50 L92 64 M107 50 L108 64" stroke="${shade(base, 0.35)}" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M51 176 Q100 184 149 176" stroke="${dark}" stroke-width="5" fill="none"/><path d="M10 162 L32 166 M190 162 L168 166" stroke="${dark}" stroke-width="5"/>`;
+  return `<svg viewBox="0 0 200 196" aria-hidden="true"><ellipse cx="100" cy="190" rx="64" ry="5" fill="rgba(11,19,40,.12)"/>
+    <path d="${BODY}" fill="${base}" stroke="${dark}" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="${BODY}" fill="url(#sheen-${kind})" opacity="${c.light ? 0.5 : 0.9}"/>${extra}${print}
+    <defs><linearGradient id="sheen-${kind}" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".18"/><stop offset=".35" stop-color="${lite}" stop-opacity=".25"/><stop offset=".65" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".2"/></linearGradient></defs></svg>`;
+}
 const SHIP = 6;
 const PALETTE = ['#2DB36B', '#2F63D6', '#F9D84A', '#F28B22', '#D62B34', '#8F72F0'];
 
 // ---------- state (persists in this browser; Reset demo clears it) ----------
-const KEY = 'pitchin-demo-v2';
+const KEY = 'pitchin-demo-v3';
 const fresh = () => ({
   now: { day: 'mon', min: t(14, 30) }, role: 'helper',
   stars: [], remind: {}, reminded: {}, shifts: [], cancelled: {}, cascade: true,
@@ -317,14 +351,16 @@ const screens = {
       <button class="btn block yellow" data-act="give">Give $${st.amount} with ${st.method === 'venmo' ? 'Venmo' : 'GoFundMe'}</button>
       ${st.gifts.length ? `<p class="sub center">You've given ${money(st.gifts.reduce((a, g) => a + g.amount, 0))} this year. Thank you!</p>` : ''}</div>
     <div class="section-h"><h2>Merch</h2>${n ? `<button data-act="checkout">Cart (${n}) · ${money(cartTotal())}</button>` : ''}</div>
-    ${PRODUCTS.map((p) => `<div class="card product">
-      <div class="shirt">${p.id === 'tee' ? TEE_SVG : STICKER_SVG}
-      <div><h3>${p.name}</h3><p class="sub">${money(p.price)} · ${p.blurb}</p></div></div>
-      ${p.sizes ? `<div class="sizes" role="group" aria-label="Size">${p.sizes.map((s) => `<button class="chip" data-act="size" data-id="${s}" aria-pressed="false">${s}</button>`).join('')}</div>` : ''}
-      <button class="btn block${p.sizes ? '' : ' ghost'}" data-act="add" data-id="${p.id}"${p.sizes ? ' disabled' : ''}>${p.sizes ? 'Pick a size' : 'Add to cart'}</button></div>`).join('')}
+    ${PRODUCTS.map((p) => { const pk = pickOf(p); return `<div class="card product">
+      <div class="garment" style="--bg:${COLORS[pk.color].light ? '#E9EEF6' : '#F3EDCF'}">${garment(p.kind, pk.color)}</div>
+      <div class="p-head"><h3>${p.name}</h3><b>${money(p.price)}</b></div><p class="sub">${p.blurb}</p>
+      <div class="swatches" role="radiogroup" aria-label="Color">${p.colors.map((c) => `<button class="sw" data-act="pcolor" data-p="${p.id}" data-id="${c}" role="radio" aria-checked="${pk.color === c}" aria-label="${COLORS[c].name}" style="--c:${COLORS[c].hex}"></button>`).join('')}
+        <span class="sw-name">${COLORS[pk.color].name}</span></div>
+      <div class="sizes" role="group" aria-label="Size">${SIZES.map((s) => `<button class="chip" data-act="psize" data-p="${p.id}" data-id="${s}" aria-pressed="${pk.size === s}">${s}</button>`).join('')}</div>
+      <button class="btn block" data-act="add" data-id="${p.id}"${pk.size ? '' : ' disabled'}>${pk.size ? `Add ${COLORS[pk.color].name.toLowerCase()} ${p.short}, ${pk.size}` : 'Pick a size'}</button></div>`; }).join('')}
     ${n ? `<button class="btn block" data-act="checkout" style="margin-top:4px">Check out · ${money(cartTotal())}</button>` : ''}
     ${st.orders.length ? `<div class="section-h"><h2>Your orders</h2></div>${st.orders.slice().reverse().map((o) => `<div class="card order" data-act="order" data-id="${o.no}" role="button" tabindex="0">
-      <div class="need-top"><div><h3>${o.no}</h3><p class="sub">${o.items.map((i) => `${i.qty} × ${PRODUCTS.find((p) => p.id === i.id).name}${i.size ? ' (' + i.size + ')' : ''}`).join(', ')}</p></div><b>${money(o.total)}</b></div>
+      <div class="need-top"><div><h3>${o.no}</h3><p class="sub">${o.items.map((i) => `${i.qty} × ${lineName(i)}`).join('<br>')}</p></div><b>${money(o.total)}</b></div>
       <p class="sub">${o.ship ? 'Shipping to your address' : 'Tap to show your pickup code'}</p></div>`).join('')}` : ''}
     <p class="hint">Demo numbers, prices, and links are placeholders.</p>`;
   },
@@ -341,8 +377,6 @@ const screens = {
   },
 };
 
-const TEE_SVG = '<svg viewBox="0 0 100 90" aria-hidden="true"><path d="M30 4 L12 12 L2 32 L18 38 L22 30 L22 86 L78 86 L78 30 L82 38 L98 32 L88 12 L70 4 C66 14 34 14 30 4Z" fill="#0B1328"/><text x="50" y="48" text-anchor="middle" font-family="Lilita One" font-size="11" fill="#F9D84A">FREEDOM</text><text x="50" y="60" text-anchor="middle" font-family="Lilita One" font-size="11" fill="#F9D84A">FEST</text><text x="50" y="72" text-anchor="middle" font-family="Lilita One" font-size="8" fill="#8F72F0">2026</text></svg>';
-const STICKER_SVG = '<svg viewBox="0 0 100 90" aria-hidden="true">' + PALETTE.slice(0, 5).map((c, i) => `<circle cx="${22 + i * 14}" cy="${30 + (i % 2) * 26}" r="17" fill="${c}" stroke="#fff" stroke-width="3"/>`).join('') + '</svg>';
 
 function setRow(s, withDay) {
   const on = isOn(s), starred = st.stars.includes(s.id), moved = shiftOf(s), gone = isCancelled(s);
@@ -601,22 +635,20 @@ const actions = {
       };
     });
   },
-  size(b) {
-    b.closest('.product').querySelectorAll('[data-act=size]').forEach((x) => x.setAttribute('aria-pressed', x === b));
-    const go = b.closest('.product').querySelector('[data-act=add]'); go.disabled = false; go.dataset.size = b.dataset.id; go.textContent = `Add size ${b.dataset.id} to cart`;
-  },
+  pcolor(b) { st.pick = st.pick || {}; st.pick[b.dataset.p] = Object.assign(pickOf(PRODUCTS.find((p) => p.id === b.dataset.p)), { color: b.dataset.id }); save(); render(); },
+  psize(b) { st.pick = st.pick || {}; st.pick[b.dataset.p] = Object.assign(pickOf(PRODUCTS.find((p) => p.id === b.dataset.p)), { size: b.dataset.id }); save(); render(); },
   add(b) {
-    const p = PRODUCTS.find((x) => x.id === b.dataset.id); if (p.sizes && !b.dataset.size) return;
-    const line = st.cart.find((i) => i.id === p.id && i.size === b.dataset.size);
-    if (line) line.qty++; else st.cart.push({ id: p.id, size: b.dataset.size || null, qty: 1 });
-    save(); render(); toast(`Added ${p.name}${b.dataset.size ? ', size ' + b.dataset.size : ''}`);
+    const p = PRODUCTS.find((x) => x.id === b.dataset.id), pk = pickOf(p); if (!pk.size) return;
+    const line = st.cart.find((i) => i.id === p.id && i.size === pk.size && i.color === pk.color);
+    if (line) line.qty++; else st.cart.push({ id: p.id, color: pk.color, size: pk.size, qty: 1 });
+    save(); render(); toast(`Added ${COLORS[pk.color].name.toLowerCase()} ${p.short}, size ${pk.size}`);
   },
   checkout() {
     const draw = (el, close) => {
       if (!st.cart.length) { close(); render(); return; }
       const sub = cartTotal(), total = sub + (st.ship ? SHIP : 0);
       el.innerHTML = `<div class="grab"></div><h2>Your cart</h2>
-        ${st.cart.map((i, k) => { const p = PRODUCTS.find((x) => x.id === i.id); return `<div class="line"><span><b>${p.name}</b>${i.size ? ` · ${i.size}` : ''}<br><span class="sub">${money(p.price)} each</span></span>
+        ${st.cart.map((i, k) => { const p = PRODUCTS.find((x) => x.id === i.id); return `<div class="line"><span class="line-sw" style="--c:${COLORS[i.color].hex}"></span><span class="line-txt"><b>${p.name}</b><br><span class="sub">${COLORS[i.color].name} · ${i.size} · ${money(p.price)} each</span></span>
           <span class="qty"><button data-q="${k}" data-d="-1" aria-label="One fewer">−</button><output>${i.qty}</output><button data-q="${k}" data-d="1" aria-label="One more">+</button></span></div>`; }).join('')}
         <span class="lbl">Get it by</span>
         <div class="seg" style="--n:2"><button data-ship="0" aria-pressed="${!st.ship}">Pickup at the booth</button><button data-ship="1" aria-pressed="${st.ship}">Ship it (+${money(SHIP)})</button></div>
@@ -662,7 +694,7 @@ function thanks(before, after) {
 }
 function showOrder(o, fresh) {
   sheet(`<h2>${fresh ? 'Order placed!' : 'Order ' + o.no}</h2>
-    <p class="sub">${o.items.map((i) => `${i.qty} × ${PRODUCTS.find((p) => p.id === i.id).name}${i.size ? ' (' + i.size + ')' : ''}`).join(', ')} · ${money(o.total)}</p>
+    <p class="sub">${o.items.map((i) => `${i.qty} × ${lineName(i)}`).join('<br>')}<br>Total ${money(o.total)}</p>
     ${o.ship ? '<div class="card"><h3>Shipping to you</h3><p class="sub">You get an email when it ships.</p></div>'
       : `<div class="card center"><span class="kick">Pickup code</span>${qr(+o.no.slice(3))}<h3>${o.no}</h3><p class="sub">Show this at the merch booth. Sizes can be swapped there if stock allows.</p></div>`}
     <p class="sub center">Thanks for helping keep Freedom Fest free.</p>
