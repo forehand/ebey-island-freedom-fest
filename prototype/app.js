@@ -136,7 +136,6 @@ const screens = {
       <div class="card"><span class="kick">Up next</span>${next ? `<span class="tag stage">${next.stage}</span>
         <div class="act">${esc(next.name)}</div><div class="sub">${fmt(next.start)}</div>` : '<div class="act">Done for today</div>'}</div>
     </div>
-    <div class="announce"><b>Pinned:</b> The water station by the Kitchen is refilled.</div>
     ${crit ? `<div class="section-h"><h2>Needed now</h2><a href="#needs">All needs</a></div>${needCard(crit)}` : ''}
     <div class="section-h"><h2>Keep it free</h2></div>
     <a href="#support" class="card dark" style="display:block;text-decoration:none">
