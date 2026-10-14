@@ -1,0 +1,44 @@
+# Publishes the Pitch In promo page at the site root and the prototype at /app to GitHub Pages.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths: [site/**, prototype/**, .github/workflows/pages.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble site
+        run: |
+          mkdir -p dist/app
+          cp -r site/. dist/
+          cp -r prototype/index.html prototype/app.css prototype/app.js prototype/sw.js prototype/manifest.webmanifest prototype/assets dist/app/
+          touch dist/.nojekyll
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
