@@ -122,12 +122,7 @@ const screens = {
     const crit = NEEDS.find((n) => n.urgency === 'critical' && covered(n) < n.qty);
     const pct = Math.round((FUND.raised / FUND.goal) * 100);
     return `
-    <div class="top"><span></span><button class="demo-pill" data-act="demo"><i></i>Mon 2:30 PM</button></div>
-    <div class="host-wrap">
-      <img class="logo" src="assets/logo.svg" alt="Ebey Island Freedom Fest">
-      <div class="host"><img src="assets/host.webp" alt="Illustrated host in a painted jacket and blue cap">
-        <div class="bubble"><b>Welcome to Freedom Fest!</b>Be kind to each other.</div></div>
-    </div>
+    ${top('Freedom Fest', '17th annual · Labor Day weekend<br>Be kind to each other')}
     <div class="section-h"><h2>On now</h2><a href="#schedule">Full schedule</a></div>
     <div class="now-grid">
       ${[[m, M], [s, S]].map(([x, stage]) => `<div class="card"><span class="tag stage">${stage}</span>
