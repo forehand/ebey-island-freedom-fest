@@ -93,13 +93,19 @@ const top = (title, sub) => `<header class="hdr">
   <button class="demo-pill" data-act="demo"><i></i>Mon 2:30 PM</button>
   <div class="drips" aria-hidden="true">${DRIPS}</div></header>`;
 
-function onNow(stage) {
-  const list = SETS.filter((s) => s.day === NOW.day && s.stage === stage).sort((a, b) => a.start - b.start);
-  let cur = null, next = null;
-  for (const s of list) { if (s.start <= NOW.min) cur = s; else if (!next) next = s; }
+// One band plays at a time: the stages alternate, so a set runs until the next set starts on either stage.
+const LAST_SET_MIN = 120; // assumed length of the day's final set
+const setEnd = (s) => {
+  const later = SETS.filter((x) => x.day === s.day && x.start > s.start).map((x) => x.start);
+  return later.length ? Math.min(...later) : s.start + LAST_SET_MIN;
+};
+function onNow() {
+  const list = SETS.filter((s) => s.day === NOW.day).sort((a, b) => a.start - b.start);
+  const cur = list.find((s) => s.start <= NOW.min && NOW.min < setEnd(s)) || null;
+  const next = list.find((s) => s.start > NOW.min) || null;
   return { cur, next };
 }
-const isOn = (s) => s.day === NOW.day && onNow(s.stage).cur === s;
+const isOn = (s) => s.day === NOW.day && onNow().cur === s;
 
 function needCard(n) {
   const c = covered(n), full = c >= n.qty, mine = st.claims[n.id];
@@ -118,16 +124,17 @@ function needCard(n) {
 // ---------- screens ----------
 const screens = {
   home() {
-    const m = onNow(M), s = onNow(S);
+    const { cur, next } = onNow();
     const crit = NEEDS.find((n) => n.urgency === 'critical' && covered(n) < n.qty);
     const pct = Math.round((FUND.raised / FUND.goal) * 100);
     return `
     ${top('Freedom Fest', '17th annual · Labor Day weekend<br>Be kind to each other')}
     <div class="section-h"><h2>On now</h2><a href="#schedule">Full schedule</a></div>
     <div class="now-grid">
-      ${[[m, M], [s, S]].map(([x, stage]) => `<div class="card"><span class="tag stage">${stage}</span>
-        <div class="act">${x.cur ? esc(x.cur.name) : 'Between sets'}</div>
-        <div class="sub">Next: ${x.next ? `${esc(x.next.name)}, ${fmt(x.next.start)}` : 'Done for today'}</div></div>`).join('')}
+      <div class="card"><span class="kick">Playing</span>${cur ? `<span class="tag stage">${cur.stage}</span>
+        <div class="act">${esc(cur.name)}</div><div class="sub">Until ${fmt(setEnd(cur))}</div>` : '<div class="act">Between sets</div>'}</div>
+      <div class="card"><span class="kick">Up next</span>${next ? `<span class="tag stage">${next.stage}</span>
+        <div class="act">${esc(next.name)}</div><div class="sub">${fmt(next.start)}</div>` : '<div class="act">Done for today</div>'}</div>
     </div>
     <div class="announce"><b>Pinned:</b> The water station by the Kitchen is refilled.</div>
     ${crit ? `<div class="section-h"><h2>Needed now</h2><a href="#needs">All needs</a></div>${needCard(crit)}` : ''}

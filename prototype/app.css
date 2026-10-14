@@ -65,6 +65,7 @@ main{padding:calc(env(safe-area-inset-top) + 12px) 16px calc(var(--tab-h) + env(
 .host-wrap{position:relative;background:var(--butter);border-radius:22px;padding:12px 12px 0;overflow:hidden}
 .now-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .now-grid .card{margin:0}
+.now-grid .kick{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px}
 .now-grid .act{font-weight:700;font-size:15px;line-height:1.2;margin:4px 0}
 .announce{background:#FFF7CF;border:1.5px solid #EBD56A;border-radius:14px;padding:10px 12px;font-size:14px;margin:10px 0}
 
