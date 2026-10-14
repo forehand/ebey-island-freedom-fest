@@ -1,6 +1,6 @@
 // Caches the prototype so it opens without signal once loaded.
-const CACHE = 'pitchin-v1';
-const FILES = ['./', 'index.html', 'app.css', 'app.js', 'manifest.webmanifest', 'assets/logo.svg', 'assets/host.webp', 'assets/band.webp',
+const CACHE = 'pitchin-v2';
+const FILES = ['./', 'index.html', 'app.css', 'app.js', 'manifest.webmanifest', 'assets/logo.svg', 'assets/host.webp', 'assets/band.webp', 'assets/bust.webp',
   'assets/lilita-one.woff2', 'assets/atkinson-400.woff2', 'assets/atkinson-400i.woff2', 'assets/atkinson-700.woff2', 'assets/icon-192.png', 'assets/icon-512.png'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k))))); self.clients.claim(); });

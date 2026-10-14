@@ -85,7 +85,25 @@ const mosaic = (n) => {
   for (let i = 0; i < n.qty; i++) cells += i < c ? `<i style="background:${PALETTE[(i * 7 + n.id.length) % PALETTE.length]}"></i>` : '<i></i>';
   return `<div class="mosaic" style="--n:${n.qty}" aria-hidden="true">${cells}</div>`;
 };
-const top = (title, sub) => `<div class="top"><div><h1>${title}</h1>${sub ? `<p class="sub">${sub}</p>` : ''}</div><button class="demo-pill" data-act="demo"><i></i>Mon 2:30 PM</button></div>`;
+// Page header: Jim's bust with a short animation that fits each page. Tap him to replay.
+let route = 'home';
+const NOTE = '<svg viewBox="0 0 20 24"><path d="M8 2v14.2A4.5 4.5 0 1 0 10 20V7l8-2V2z"/></svg>';
+const HEART = '<svg viewBox="0 0 24 22"><path d="M12 21S1 14.5 1 7.5A5.5 5.5 0 0 1 12 4a5.5 5.5 0 0 1 11 3.5C23 14.5 12 21 12 21z"/></svg>';
+const SPARK = '<svg viewBox="0 0 20 20"><path d="M10 0l2.6 7.4L20 10l-7.4 2.6L10 20l-2.6-7.4L0 10l7.4-2.6z"/></svg>';
+const TENT = '<svg viewBox="0 0 30 22"><path d="M15 1L29 21H1z"/><path d="M15 8l5 13h-10z" fill="#0B1328" opacity=".55"/></svg>';
+const PROPS = {
+  needs: () => PALETTE.map((c, i) => `<span class="p tile-drop" style="--i:${i};--c:${c};left:${-100 + i * 16}px"></span>`).join(''),
+  schedule: () => [0, 1, 2, 3].map((i) => `<span class="p note" style="--i:${i};--c:${['#F9D84A','#2DB36B','#F28B22','#8F72F0'][i]};--dx:${-30 - i * 14}px">${NOTE}</span>`).join(''),
+  photos: () => `<span class="p flash"></span>` + [[-6, 6], [104, 14], [-14, 70], [112, 64]].map(([x, y], i) => `<span class="p spark" style="--i:${i};left:${x}px;top:${y}px">${SPARK}</span>`).join(''),
+  chat: () => [['On my way', -66, 4], ['…', -14, 30], ['Got it', -40, 58]].map(([t, x, y], i) => `<span class="p chatb" style="--i:${i};left:${x}px;top:${y}px">${t}</span>`).join(''),
+  support: () => [0, 1, 2, 3, 4, 5].map((i) => `<span class="p heart" style="--i:${i};--c:${PALETTE[i]};left:${-6 + (i % 3) * 14}px">${HEART}</span>`).join(''),
+  crews: () => [0, 1, 2, 3].map((i) => `<span class="p tent" style="--i:${i};--c:${PALETTE[(i + 3) % 6]};left:${-4 + i * 30}px">${TENT}</span>`).join(''),
+};
+const DRIPS = PALETTE.concat(PALETTE).map((c, i) => `<i style="--c:${c};left:${4 + i * 8.2}%;--h:${8 + ((i * 7) % 5) * 4}px"></i>`).join('');
+const top = (title, sub) => `<header class="hdr" data-anim="${route}">
+  <div class="hdr-text"><button class="demo-pill" data-act="demo"><i></i>Mon 2:30 PM</button><h1>${title}</h1>${sub ? `<p class="sub">${sub}</p>` : ''}</div>
+  <button class="jim" data-act="replay" aria-label="Replay animation"><span class="props" aria-hidden="true">${PROPS[route] ? PROPS[route]() : ''}</span><img src="assets/bust.webp" alt=""></button>
+  <div class="drips" aria-hidden="true">${DRIPS}</div></header>`;
 
 function onNow(stage) {
   const list = SETS.filter((s) => s.day === NOW.day && s.stage === stage).sort((a, b) => a.start - b.start);
@@ -209,7 +227,7 @@ const screens = {
   },
 
   crews() {
-    return `<a class="back" href="#home">‹ Home</a>${top('Join a crew', 'Pick one or more. Leads approve some crews.')}
+    return `${top('Join a crew', 'Pick one or more. Leads approve some.')}<a class="back" href="#home">‹ Home</a>
     ${CREWS.map((c) => {
       const s = st.joined[c.id];
       const btn = s === 'member' ? '<span class="tag whenever">Joined</span>' : s === 'pending' ? '<span class="tag changed">Requested</span>'
@@ -232,13 +250,14 @@ const ICONS = {
 const TABS = [['home', 'Home'], ['needs', 'Needs'], ['schedule', 'Schedule'], ['photos', 'Photos'], ['chat', 'Chat'], ['support', 'Support']];
 
 function render() {
-  const route = (location.hash.slice(1) || 'home');
-  const name = screens[route] ? route : 'home';
+  const want = (location.hash.slice(1) || 'home');
+  const name = screens[want] ? want : 'home';
+  route = name;
   $('#main').innerHTML = screens[name]();
   const tab = name === 'crews' ? 'home' : name;
   $('#tabs').innerHTML = TABS.map(([id, l]) => `<a href="#${id}"${id === tab ? ' aria-current="page"' : ''}><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[id]}</svg>${l}</a>`).join('');
 }
-window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); });
+window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); actions.replay(); });
 
 // ---------- actions ----------
 const actions = {
@@ -266,6 +285,10 @@ const actions = {
       el.querySelectorAll('[data-d]').forEach((x) => x.onclick = () => { q = Math.max(1, Math.min(left, q + +x.dataset.d)); out.textContent = q; go.textContent = 'Claim ' + q; });
       go.onclick = () => { st.claims[n.id] = (st.claims[n.id] || 0) + q; save(); close(); render(); toast(`Thanks! ${n.team} crew sees your claim.`); };
     });
+  },
+  replay() {
+    const h = $('.hdr'); if (!h) return;
+    h.classList.remove('play'); void h.offsetWidth; h.classList.add('play');
   },
   post() { toast('Posting needs comes in the next pass'); },
   day(b) { st.scheduleDay = b.dataset.id; save(); render(); },
@@ -302,6 +325,6 @@ document.addEventListener('submit', (e) => {
   window.scrollTo(0, document.body.scrollHeight);
 });
 
-render();
+render(); requestAnimationFrame(() => actions.replay());
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
