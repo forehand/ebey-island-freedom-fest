@@ -1,5 +1,5 @@
 // Caches the prototype so it opens without signal once loaded.
-const CACHE = 'pitchin-v12';
+const CACHE = 'pitchin-v13';
 const FILES = ['./', 'index.html', 'app.css', 'app.js', 'manifest.webmanifest', 'assets/logo.svg', 'assets/host.webp', 'assets/band.webp', 'assets/album-daytime-set.webp', 'assets/album-kitchen-crew.webp', 'assets/album-finale.webp', 'assets/album-band-bow.webp', 'assets/album-harp-and-guitar.webp', 'assets/album-singer.webp', 'assets/album-night-guitar.webp', 'assets/album-camp-selfie.webp',
   'assets/lilita-one.woff2', 'assets/atkinson-400.woff2', 'assets/atkinson-400i.woff2', 'assets/atkinson-700.woff2', 'assets/icon-192.png', 'assets/icon-512.png'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES))); self.skipWaiting(); });

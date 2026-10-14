@@ -129,10 +129,10 @@ const SHIP = 6;
 const PALETTE = ['#2DB36B', '#2F63D6', '#F9D84A', '#F28B22', '#D62B34', '#8F72F0'];
 
 // ---------- state (persists in this browser; Reset demo clears it) ----------
-const KEY = 'pitchin-demo-v4';
+const KEY = 'pitchin-demo-v5';
 const fresh = () => ({
   now: { day: 'fri', min: CLOCK_MIN }, role: 'helper',
-  stars: [], remind: {}, reminded: {}, shifts: [], cancelled: {}, cascade: true,
+  stars: [], remind: {}, reminded: {}, sched: {}, log: [], status: {}, notes: {}, cascade: true,
   claims: {}, posted: [], closed: {}, needFilter: 'all',
   msgs: {}, joined: {}, scheduleDay: null,
   gifts: [], amount: 25, method: 'venmo', cart: [], orders: [], ship: false,
@@ -150,7 +150,7 @@ const nowAbs = () => abs(st.now.day, st.now.min);
 const clockLabel = () => `${dayOf(st.now.day).label} ${fmt(st.now.min)}`;
 const signedIn = () => st.role !== 'public';
 const isLead = () => st.role === 'lead';
-const isMember = (id) => st.joined[id] === 'member' || (id === 'kitchen' && isLead());
+const isMember = (id) => st.joined[id] === 'member' || (id === 'kitchen' && isLead()) || (id === 'sound' && st.role === 'stage');
 const absLabel = (a) => { const d = DAYS[Math.floor(a / 1440)]; return (d.id === st.now.day ? '' : d.label + ' ') + fmt(a % 1440); };
 
 function toast(msg) {
@@ -173,9 +173,16 @@ const qr = (seed) => `<div class="qr" aria-hidden="true">${Array.from({ length: 
 
 // ---------- schedule logic: one band plays at a time, so a set runs until the next set starts on either stage ----------
 const LAST_SET_MIN = 120; // assumed length of the day's final set
-const shiftOf = (s) => st.shifts.reduce((a, x) => a + (x.id === s.id || (x.cascade && x.day === s.day && s.start > x.start) ? x.min : 0), 0);
-const startOf = (s) => s.start + shiftOf(s);
-const isCancelled = (s) => !!st.cancelled[s.id];
+// Stage-manager changes are stored as overrides per set: { start, stage, cancelled }.
+const ov = (s) => st.sched[s.id] || {};
+const startOf = (s) => (ov(s).start ?? s.start);
+const stageOf = (s) => ov(s).stage || s.stage;
+const isCancelled = (s) => !!ov(s).cancelled;
+const shiftOf = (s) => startOf(s) - s.start;
+const STAGE_STATES = { run: 'Running', late: 'Running late', weather: 'Paused: weather hold', power: 'Paused: power', medical: 'Paused: medical' };
+const statusOf = (stage) => (st.status || {})[stage] || 'run';
+const statusBanner = () => [M, S].filter((x) => statusOf(x) !== 'run').map((x) =>
+  `<div class="stage-alert ${statusOf(x) === 'late' ? 'late' : ''}"><b>${x}</b> ${STAGE_STATES[statusOf(x)].toLowerCase()}${statusOf(x) === 'late' ? '. Times may slip.' : '. Hang tight; we will update here.'}</div>`).join('');
 const daySets = (day) => SETS.filter((s) => s.day === day && !isCancelled(s)).sort((a, b) => startOf(a) - startOf(b));
 const setEnd = (s) => {
   const later = daySets(s.day).filter((x) => startOf(x) > startOf(s)).map(startOf);
@@ -253,17 +260,18 @@ const screens = {
     visibleNeeds().filter((n) => st.claims[n.id]).forEach((n) =>
       mine.push(`<a class="row" href="#needs"><span class="ico">✓</span><span><b>You're bringing ${st.claims[n.id]} ${esc(n.unit.split(',')[0])}</b><br><span class="sub">${esc(n.title)} · ${dueLabel(n)}</span></span></a>`));
     SETS.filter((s) => st.stars.includes(s.id) && !isCancelled(s) && setAbs(s) >= nowAbs()).sort((a, b) => setAbs(a) - setAbs(b)).slice(0, 2).forEach((s) =>
-      mine.push(`<a class="row" href="#schedule"><span class="ico star-ico">★</span><span><b>${esc(s.name)}</b><br><span class="sub">${s.stage} · ${absLabel(setAbs(s))}${shiftOf(s) ? ' · moved' : ''}</span></span></a>`));
+      mine.push(`<a class="row" href="#schedule"><span class="ico star-ico">★</span><span><b>${esc(s.name)}</b><br><span class="sub">${stageOf(s)} · ${absLabel(setAbs(s))}${shiftOf(s) ? ' · moved' : ''}</span></span></a>`));
     st.orders.forEach((o) => mine.push(`<a class="row" href="#support"><span class="ico">▣</span><span><b>Order ${o.no}</b><br><span class="sub">${o.ship ? 'Shipping to you' : 'Pickup code ready at the merch booth'}</span></span></a>`));
     CREWS.filter((c) => st.joined[c.id] === 'pending').forEach((c) => mine.push(`<a class="row" href="#crews"><span class="ico">…</span><span><b>${c.name}</b><br><span class="sub">Waiting for the lead to approve</span></span></a>`));
     const inCrew = CREWS.some((c) => isMember(c.id));
     return `
     ${top('Freedom Fest', '17th annual · Labor Day weekend<br>Be kind to each other')}
+    ${statusBanner()}
     <div class="section-h"><h2>On now</h2><a href="#schedule">Full schedule</a></div>
     <div class="now-grid">
-      <div class="card"><span class="kick">Playing</span>${cur ? `<span class="tag stage">${cur.stage}</span>
+      <div class="card"><span class="kick">Playing</span>${cur ? `<span class="tag stage">${stageOf(cur)}</span>${statusOf(stageOf(cur)) !== 'run' ? `<span class="tag changed">${STAGE_STATES[statusOf(stageOf(cur))]}</span>` : ''}
         <div class="act">${esc(cur.name)}</div><div class="sub">Until ${fmt(setEnd(cur))}</div>` : daySets(st.now.day).some((s) => startOf(s) <= st.now.min) ? '<div class="act">Between sets</div>' : `<div class="act">No music yet</div><div class="sub">${next ? 'Starts at ' + fmt(startOf(next)) : 'No sets today'}</div>`}</div>
-      <div class="card"><span class="kick">Up next</span>${next ? `<span class="tag stage">${next.stage}</span>
+      <div class="card"><span class="kick">Up next</span>${next ? `<span class="tag stage">${stageOf(next)}</span>
         <div class="act">${esc(next.name)}</div><div class="sub">${fmt(startOf(next))}${shiftOf(next) ? ' · moved' : ''}</div>` : '<div class="act">Done for today</div>'}</div>
     </div>
     ${mine.length ? `<div class="section-h"><h2>Your stuff</h2></div><div class="card list">${mine.join('')}</div>` : ''}
@@ -306,7 +314,7 @@ const screens = {
     }
     const day = dayOf(sel);
     const sets = SETS.filter((s) => s.day === day.id).sort((a, b) => startOf(a) - startOf(b));
-    return `${top('Schedule', `${day.full} · Sunset ${day.sunset}`)}${chips}${stage}
+    return `${top('Schedule', `${day.full} · Sunset ${day.sunset}`)}${chips}${statusBanner()}${stage}
     ${sets.map((s) => setRow(s)).join('')}
     <p class="hint">Tap a band for details.</p>`;
   },
@@ -396,22 +404,89 @@ const screens = {
 };
 
 
+const movedTag = (s) => { const m = shiftOf(s); return m && !isCancelled(s) ? `<span class="tag changed">${m > 0 ? 'Moved ' + m + ' min later' : 'Moved ' + -m + ' min earlier'}</span>` : ''; };
 function setRow(s, withDay) {
-  const on = isOn(s), starred = st.stars.includes(s.id), moved = shiftOf(s), gone = isCancelled(s);
+  const on = isOn(s), starred = st.stars.includes(s.id), moved = shiftOf(s), gone = isCancelled(s), sm = st.role === 'stage';
+  const restaged = stageOf(s) !== s.stage;
   return `<div class="card set${on ? ' on' : ''}${gone ? ' gone' : ''}"><div class="time">${fmt(startOf(s))}${moved ? `<s>${fmt(s.start)}</s>` : ''}</div>
-    <button class="body" data-act="band" data-id="${s.id}"><span class="tag stage">${s.stage}</span>${on ? '<span class="tag now">On now</span>' : ''}${moved && !gone ? `<span class="tag changed">Moved ${moved} min</span>` : ''}${gone ? '<span class="tag critical">Cancelled</span>' : ''}<span class="name">${esc(s.name)}</span></button>
+    <button class="body" data-act="${sm ? 'editset' : 'band'}" data-id="${s.id}"><span class="tag stage">${stageOf(s)}</span>${on ? '<span class="tag now">On now</span>' : ''}${movedTag(s)}${restaged && !gone ? '<span class="tag changed">New stage</span>' : ''}${gone ? '<span class="tag critical">Cancelled</span>' : ''}<span class="name">${esc(s.name)}</span>${st.notes[s.id] ? `<span class="set-note">📣 ${esc(st.notes[s.id])}</span>` : ''}${sm ? '<span class="edit-cue">Edit ›</span>' : ''}</button>
     ${starred && withDay ? `<button class="bell" data-act="remind" data-id="${s.id}" aria-pressed="${!!st.remind[s.id]}" aria-label="Reminder for ${esc(s.name)}">${st.remind[s.id] ? '🔔' : '🔕'}</button>` : ''}
     <button class="star" data-act="star" data-id="${s.id}" aria-pressed="${starred}" aria-label="${starred ? 'Unstar' : 'Star'} ${esc(s.name)}">${starred ? '★' : '☆'}</button></div>`;
 }
 function stagePanel() {
   const { cur, next } = onNow();
-  const changed = st.shifts.length || Object.keys(st.cancelled).length;
-  return `<div class="card stage-mgr"><span class="kick">Stage manager</span>
-    <p class="sub">${cur ? `Playing: <b>${esc(cur.name)}</b>, until ${fmt(setEnd(cur))}` : 'Nobody on stage right now'}</p>
-    ${next ? `<h3>Up next: ${esc(next.name)}</h3><p class="sub">${next.stage} · ${fmt(startOf(next))} · ${next.fans} people starred this set</p>
-    <div class="sm-actions"><button class="btn small" data-act="delay" data-id="${next.id}">+15 min</button><button class="btn small ghost" data-act="cancelset" data-id="${next.id}">Cancel set</button></div>
-    <label class="check"><input type="checkbox" data-act="cascade" ${st.cascade ? 'checked' : ''}> Shift later sets too</label>` : '<p class="sub">No more sets today.</p>'}
-    ${changed ? '<button class="linkish" data-act="undoall">Undo all schedule changes</button>' : ''}</div>`;
+  const day = daySets(st.now.day);
+  const clashes = day.filter((s, i) => i && startOf(s) === startOf(day[i - 1]));
+  return `<div class="card stage-mgr"><span class="kick">Stage manager · ${dayOf(st.now.day).name}</span>
+    <div class="st-row">${[M, S].map((x) => `<button class="st-pill ${statusOf(x)}" data-act="stagestatus" data-id="${x}"><span>${x}</span><b>${STAGE_STATES[statusOf(x)]}</b></button>`).join('')}</div>
+    ${cur ? `<div class="sm-block"><span class="kick">Playing now</span><h3>${esc(cur.name)}</h3><p class="sub">${stageOf(cur)} · until ${fmt(setEnd(cur))}</p>
+      <div class="sm-actions"><button class="btn small ghost" data-act="long" data-id="${cur.id}">Running long +5</button><button class="btn small ghost" data-act="early" data-id="${cur.id}">Ended early</button></div></div>` : '<p class="sub">Nobody on stage right now.</p>'}
+    ${next ? `<div class="sm-block"><span class="kick">Up next · ${fmt(startOf(next))}</span><h3>${esc(next.name)}</h3><p class="sub">${stageOf(next)} · ${next.fans + (st.stars.includes(next.id) ? 1 : 0)} people starred this set</p>
+      <div class="sm-actions"><button class="btn small" data-act="nudge" data-id="${next.id}" data-min="15">+15 min</button><button class="btn small ghost" data-act="editset" data-id="${next.id}">Edit set</button><button class="btn small ghost" data-act="cancelset" data-id="${next.id}">Cancel</button></div></div>` : '<p class="sub">No more sets today.</p>'}
+    <label class="check"><input type="checkbox" data-act="cascade" ${st.cascade ? 'checked' : ''}> When a set moves, shift later sets too</label>
+    ${clashes.length ? `<div class="warn">${clashes.map((s) => `Two sets start at ${fmt(startOf(s))}.`).join(' ')} Move one or swap them.</div>` : ''}
+    ${st.log.length ? `<span class="kick" style="margin-top:12px">Changes today</span><ul class="log">${st.log.slice(0, 4).map((l) => `<li><span>${l.at}</span>${esc(l.text)}</li>`).join('')}</ul>
+      <div class="sm-actions"><button class="btn small ghost" data-act="undo">Undo last</button><button class="linkish" data-act="undoall">Undo all changes</button></div>` : ''}
+    <p class="sub" style="margin-top:8px">Tap any set below to edit it.</p></div>`;
+}
+function setOv(s, patch) {
+  const o = Object.assign({}, st.sched[s.id], patch);
+  if (o.start === s.start) delete o.start;
+  if (o.stage === s.stage) delete o.stage;
+  if (!o.cancelled) delete o.cancelled;
+  if (Object.keys(o).length) st.sched[s.id] = o; else delete st.sched[s.id];
+}
+// Every change is logged with a snapshot for undo, and people who starred the affected sets get a notice.
+function change(text, sets, fn, quiet) {
+  const before = JSON.stringify(st.sched);
+  fn();
+  st.log.unshift({ at: clockLabel(), text, before });
+  sets.forEach((x) => delete st.reminded[x.id]);
+  const fans = sets.reduce((a, x) => a + x.fans + (st.stars.includes(x.id) ? 1 : 0), 0);
+  save(); render();
+  if (!quiet) toast(`${text}. ${fans} people who starred ${sets.length > 1 ? 'these sets' : 'it'} got a notice.`);
+}
+function shiftSet(s, min, cascade, why = '') {
+  const day = daySets(s.day), i = day.indexOf(s), prev = day[i - 1], next = day[i + 1];
+  if (setAbs(s) <= nowAbs()) { toast(`${s.name} has already started. Use Running long or Ended early.`); return; }
+  const to = startOf(s) + min;
+  if (prev && to <= startOf(prev) + 10) { toast(`That leaves ${prev.name} under 10 minutes. Swap the sets instead.`); return; }
+  if (!cascade && next && to >= startOf(next) - 10) { toast(`That runs into ${next.name}. Turn on shifting later sets, or swap.`); return; }
+  const hit = cascade ? day.slice(i) : [s];
+  const word = min > 0 ? `${min} min later` : `${-min} min earlier`;
+  change(`${why}${s.name}${hit.length > 1 ? ` and ${hit.length - 1} later set${hit.length > 2 ? 's' : ''}` : ''} moved ${word}`, hit, () => hit.forEach((x) => setOv(x, { start: startOf(x) + min })));
+}
+function editSet(s) {
+  const day = daySets(s.day), i = day.indexOf(s), next = day[i + 1];
+  const started = !isCancelled(s) && setAbs(s) <= nowAbs();
+  sheet(`<span class="kick">Edit set · ${dayOf(s.day).name}</span><h2>${esc(s.name)}</h2>
+    <p class="sub">${stageOf(s)} · ${fmt(startOf(s))} to ${fmt(setEnd(s))}${shiftOf(s) || stageOf(s) !== s.stage ? ` · originally ${s.stage}, ${fmt(s.start)}` : ''}</p>
+    ${isCancelled(s) ? '<div class="warn">This set is cancelled.</div><button class="btn block" data-go="restore" style="margin-top:10px">Restore set</button>' : `
+    ${started ? `<div class="warn">${setAbs(s) + 0 < nowAbs() && setEnd(s) + DAY_IDX[s.day] * 1440 <= nowAbs() ? 'This set is over.' : 'Playing now. Use Running long or Ended early on the stage manager panel.'} Times can't change after a set starts.</div>` : `<span class="lbl">Start time</span>
+    <div class="nudges">${[-15, -5, 5, 15].map((m) => `<button class="chip" data-m="${m}">${m > 0 ? '+' : '−'}${Math.abs(m)} min</button>`).join('')}</div>
+    <label class="check"><input type="checkbox" data-casc ${st.cascade ? 'checked' : ''}> Shift later sets too</label>`}
+    <span class="lbl">Stage</span>
+    <div class="seg" style="--n:2">${[M, S].map((x) => `<button data-stage="${x}" aria-pressed="${stageOf(s) === x}">${x}</button>`).join('')}</div>
+    <div class="sheet-actions">${next && !started ? `<button class="btn ghost" data-go="swap">Swap with ${esc(next.name.split(' ~ ')[0])}</button>` : ''}<button class="btn ghost" data-go="cancel">Cancel set</button></div>
+    <span class="lbl">Note to people who starred it</span>
+    <div class="note-row"><input data-note placeholder="e.g. Acoustic set because of the rain" value="${esc(st.notes[s.id] || '')}"><button class="btn small" data-go="note">Send</button></div>`}
+    <div class="crew-only"><span class="kick">Crew only</span>
+      <dl class="facts"><dt>Load-in</dt><dd>${fmt(startOf(s) - 45)}, behind ${stageOf(s)}</dd><dt>Changeover</dt><dd>15 minutes</dd><dt>Backline</dt><dd>House drum kit and bass amp; band brings the rest</dd><dt>Band contact</dt><dd>Shown here to stage crew in the live app</dd></dl>
+      <div class="sheet-actions"><a class="btn ghost" href="#chat/sound" data-close>Message Lights and sound</a><button class="btn ghost" data-go="public">Public page</button></div></div>`, (el, close) => {
+    const casc = () => { const c = el.querySelector('[data-casc]'); return c ? c.checked : st.cascade; };
+    el.querySelectorAll('[data-m]').forEach((x) => x.onclick = () => { close(); st.cascade = casc(); shiftSet(s, +x.dataset.m, st.cascade); });
+    el.querySelectorAll('[data-stage]').forEach((x) => x.onclick = () => { if (x.dataset.stage === stageOf(s)) return; close(); change(`${s.name} moved to ${x.dataset.stage}`, [s], () => setOv(s, { stage: x.dataset.stage })); });
+    el.querySelectorAll('[data-go]').forEach((x) => x.onclick = () => {
+      const go = x.dataset.go;
+      if (go === 'public') { close(); actions.band({ dataset: { id: s.id } }); return; }
+      if (go === 'note') { const v = el.querySelector('[data-note]').value.trim(); close(); st.notes[s.id] = v; if (!v) delete st.notes[s.id];
+        change(v ? `Note on ${s.name}: “${v}”` : `Note on ${s.name} removed`, [s], () => {}); return; }
+      close();
+      if (go === 'restore') change(`${s.name} restored`, [s], () => setOv(s, { cancelled: false }));
+      if (go === 'cancel') change(`${s.name} cancelled`, [s], () => setOv(s, { cancelled: true }));
+      if (go === 'swap') { const a = startOf(s), c = startOf(next); change(`${s.name} swapped with ${next.name}`, [s, next], () => { setOv(s, { start: c }); setOv(next, { start: a }); }); }
+    });
+  });
 }
 function channels() {
   const out = CREWS.filter((c) => isMember(c.id)).map((c) => ({ id: c.id, kind: 'crew', name: c.name + ' crew', sub: `${c.members} members`, pinned: c.pinned, color: PALETTE[CREWS.indexOf(c)] }));
@@ -451,7 +526,7 @@ function checkReminders(before) {
   const a = nowAbs();
   if (a <= before) return;
   const due = SETS.find((s) => st.stars.includes(s.id) && st.remind[s.id] && !st.reminded[s.id] && !isCancelled(s) && setAbs(s) - 15 <= a && a < setAbs(s));
-  if (due) { st.reminded[due.id] = true; save(); toast(`🔔 In ${setAbs(due) - a} min: ${due.name}, ${due.stage}`); }
+  if (due) { st.reminded[due.id] = true; save(); toast(`🔔 In ${setAbs(due) - a} min: ${due.name}, ${stageOf(due)}`); }
 }
 function stopPlay() { clearInterval(playing); playing = null; render(); }
 function play() {
@@ -592,7 +667,7 @@ const actions = {
   remind(b) { const id = b.dataset.id; st.remind[id] = !st.remind[id]; save(); render(); toast(st.remind[id] ? 'Reminder on' : 'Reminder off'); },
   band(b) {
     const s = SETS.find((x) => x.id === b.dataset.id), starred = st.stars.includes(s.id), d = dayOf(s.day);
-    sheet(`<span class="tag stage">${s.stage}</span>${isOn(s) ? '<span class="tag now">On now</span>' : ''}${shiftOf(s) ? `<span class="tag changed">Moved ${shiftOf(s)} min</span>` : ''}${isCancelled(s) ? '<span class="tag critical">Cancelled</span>' : ''}
+    sheet(`<span class="tag stage">${stageOf(s)}</span>${isOn(s) ? '<span class="tag now">On now</span>' : ''}${movedTag(s)}${isCancelled(s) ? '<span class="tag critical">Cancelled</span>' : ''}${st.notes[s.id] ? `<p class="set-note big">📣 ${esc(st.notes[s.id])}</p>` : ''}
       <h2 style="margin-top:6px">${esc(s.name)}</h2><p class="sub">${d.name} · ${fmt(startOf(s))} to ${fmt(setEnd(s))}</p>
       <div class="band-photo" aria-hidden="true" style="background:linear-gradient(135deg,${PALETTE[s.id.length % 6]},${PALETTE[(+s.id.slice(1)) % 6]})"><span>Band photo</span></div>
       <p class="sub">The band's bio and photo arrive through their performer link, along with their OK to show them here.</p>
@@ -602,22 +677,39 @@ const actions = {
       el.querySelector('[data-go]').onclick = () => { close(); actions.star({ dataset: { id: s.id } }); };
     });
   },
-  delay(b) {
-    const s = SETS.find((x) => x.id === b.dataset.id);
-    st.shifts.push({ id: s.id, day: s.day, start: s.start, min: 15, cascade: st.cascade });
-    const hit = SETS.filter((x) => x.day === s.day && !isCancelled(x) && (x.id === s.id || (st.cascade && x.start > s.start)));
-    const fans = hit.reduce((a, x) => a + x.fans + (st.stars.includes(x.id) ? 1 : 0), 0);
-    hit.forEach((x) => delete st.reminded[x.id]);
-    save(); render();
-    toast(`${s.name}${hit.length > 1 ? ` and ${hit.length - 1} later sets` : ''} moved 15 min. ${fans} people who starred them got a notice.`);
+  editset(b) { editSet(SETS.find((x) => x.id === b.dataset.id)); },
+  nudge(b) { shiftSet(SETS.find((x) => x.id === b.dataset.id), +b.dataset.min, st.cascade); },
+  long(b) {
+    const cur = SETS.find((x) => x.id === b.dataset.id), next = daySets(cur.day).find((x) => startOf(x) > startOf(cur));
+    if (!next) { toast('No later set to push back'); return; }
+    shiftSet(next, 5, st.cascade, `${cur.name} running long. `);
+  },
+  early(b) {
+    const cur = SETS.find((x) => x.id === b.dataset.id), next = daySets(cur.day).find((x) => startOf(x) > startOf(cur));
+    if (!next) { toast('No later set to pull up'); return; }
+    const gap = startOf(next) - (st.now.min + 15);
+    if (gap <= 0) { toast(`${next.name} already starts within 15 minutes`); return; }
+    shiftSet(next, -gap, st.cascade, `${cur.name} ended early. `);
   },
   cancelset(b) {
     const s = SETS.find((x) => x.id === b.dataset.id);
-    st.cancelled[s.id] = true; save(); render();
-    toast(`${s.name} cancelled. ${s.fans + (st.stars.includes(s.id) ? 1 : 0)} people who starred it got a notice.`);
+    change(`${s.name} cancelled`, [s], () => setOv(s, { cancelled: true }));
   },
   cascade(b) { st.cascade = b.checked; save(); },
-  undoall() { st.shifts = []; st.cancelled = {}; save(); render(); toast('Schedule back to the original times'); },
+  undo() { const l = st.log.shift(); if (!l) return; st.sched = JSON.parse(l.before); st.reminded = {}; save(); render(); toast('Undone: ' + l.text); },
+  undoall() { st.sched = {}; st.log = []; st.status = {}; st.notes = {}; st.reminded = {}; save(); render(); toast('Schedule back to the original times'); },
+  stagestatus(b) {
+    const stage = b.dataset.id;
+    sheet(`<h2>${stage}</h2><p class="sub">Paused or late shows as a banner at the top of Home and Schedule for everyone.</p>
+      <div class="opt-list">${Object.entries(STAGE_STATES).map(([k, l]) => `<button class="opt${statusOf(stage) === k ? ' on' : ''}" data-k="${k}">${l}</button>`).join('')}</div>`, (el, close) => {
+      el.querySelectorAll('[data-k]').forEach((x) => x.onclick = () => {
+        const before = JSON.stringify(st.sched);
+        st.status = Object.assign({}, st.status, { [stage]: x.dataset.k });
+        st.log.unshift({ at: clockLabel(), text: `${stage}: ${STAGE_STATES[x.dataset.k].toLowerCase()}`, before });
+        save(); close(); render(); toast(`${stage} is now “${STAGE_STATES[x.dataset.k]}.” Everyone sees the banner.`);
+      });
+    });
+  },
 
   // photos
   upload() { toast('Uploading comes in the next pass'); },
