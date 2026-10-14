@@ -72,6 +72,19 @@ const SEED_MSGS = {
   rosie: [{ who: 'Rosie', color: '#8F72F0', text: 'Thanks for jumping on the ice! Drop it at the blue cooler.' }],
 };
 
+const GUEST = 'a Freedom Fest guest', SIVM = 'Sudden Impact Visual Media';
+const PHOTOS = [
+  { id: 'band', src: 'assets/band.webp', tag: 'stages', hearts: 214, by: GUEST, alt: 'Singer in a white suit and hat raising a fist to a cheering night crowd' },
+  { id: 'daytime-set', src: 'assets/album-daytime-set.webp', tag: 'stages', hearts: 162, by: GUEST, alt: 'Four-piece band playing an afternoon set under the string lights' },
+  { id: 'kitchen-crew', src: 'assets/album-kitchen-crew.webp', tag: 'crew', hearts: 188, by: GUEST, alt: 'The Freedom Fest kitchen crew posing in aprons under the kitchen sign' },
+  { id: 'finale', src: 'assets/album-finale.webp', tag: 'stages', hearts: 151, by: GUEST, alt: 'Musicians arm in arm taking a bow under the sponsor banner' },
+  { id: 'band-bow', src: 'assets/album-band-bow.webp', tag: 'stages', hearts: 137, by: SIVM, alt: 'Six band members grinning on stage after their set' },
+  { id: 'harp-and-guitar', src: 'assets/album-harp-and-guitar.webp', tag: 'stages', hearts: 121, by: SIVM, alt: 'Guitarist in a straw hat and a harmonica player in a haze of stage light' },
+  { id: 'singer', src: 'assets/album-singer.webp', tag: 'stages', hearts: 109, by: SIVM, alt: 'Singer in red sunglasses and a shimmering blue shirt at the mic' },
+  { id: 'night-guitar', src: 'assets/album-night-guitar.webp', tag: 'stages', hearts: 84, by: GUEST, alt: 'Guitarist bent over a telecaster under purple stage light' },
+  { id: 'camp-selfie', src: 'assets/album-camp-selfie.webp', tag: 'camp', hearts: 96, by: GUEST, alt: 'Three friends grinning in a selfie by the camp trailers' },
+];
+const heartsOf = (p) => p.hearts + ((st.hearts || {})[p.id] ? 1 : 0);
 const FUND = { raised: 8420, goal: 15000, donors: 163 }; // placeholder numbers
 const AMOUNTS = [10, 25, 50, 100];
 const COLORS = {
@@ -300,12 +313,16 @@ const screens = {
 
   photos() {
     if (!signedIn()) return `${top('Photo album')}<div class="card"><h3>Sign in to see photos</h3><p class="sub">The album is for people at Freedom Fest. Photos never get public links.</p><div class="need-actions"><button class="btn small" data-act="signin">Sign in</button></div></div>`;
-    const tiles = [['Sunset', '#F28B22,#D62B34'], ['Camp life', '#2DB36B,#1F3A27'], ['Kitchen', '#F9D84A,#F28B22'], ['Crew', '#2F63D6,#0B1328'], ['Shaman Stage', '#8F72F0,#2F63D6'], ['Kids’ area', '#45C4E8,#2DB36B'], ['Main Stage', '#D62B34,#8F72F0'], ['Night', '#141D3B,#8F72F0'], ['Sunday jam', '#F9D84A,#2DB36B']];
+    const F = { fav: 'Crowd favorites', stages: 'Stages', crew: 'Crew', camp: 'Camp life' };
+    const f = st.photoFilter || 'fav';
+    const list = PHOTOS.filter((p) => f === 'fav' || p.tag === f).sort((a, b) => heartsOf(b) - heartsOf(a));
+    const [first, ...rest] = list;
+    const tile = (p) => `<button class="ph" data-act="photo" data-id="${p.id}"><img src="${p.src}" alt="${esc(p.alt)}" loading="lazy"><span class="hearts${(st.hearts || {})[p.id] ? ' on' : ''}">♥ ${heartsOf(p)}</span></button>`;
     return `${top('Photo album', '2,418 photos from 312 people')}
-    <div class="chips"><button class="chip" aria-pressed="true">Crowd favorites</button><button class="chip">Friday</button><button class="chip">Saturday</button><button class="chip">Sunday</button><button class="chip">Monday</button></div>
-    <div class="feat"><img src="assets/band.webp" alt="Singer in a white suit and hat raising a fist to a cheering night crowd"><span class="tag">Top photo</span><span class="hearts">♥ 214</span></div>
-    <div class="grid">${tiles.map(([l, g]) => `<div class="tile" style="background:linear-gradient(135deg,${g})">${l}</div>`).join('')}</div>
-    <p class="hint">Stand-in tiles. Real photos come from the crowd.</p>
+    <div class="chips" role="group" aria-label="Show">${Object.entries(F).map(([k, l]) => `<button class="chip" data-act="pfilter" data-id="${k}" aria-pressed="${f === k}">${l}</button>`).join('')}</div>
+    ${first ? `<button class="feat ph" data-act="photo" data-id="${first.id}"><img src="${first.src}" alt="${esc(first.alt)}"><span class="tag">Top photo</span><span class="hearts${(st.hearts || {})[first.id] ? ' on' : ''}">♥ ${heartsOf(first)}</span></button>` : ''}
+    <div class="grid2">${rest.map(tile).join('')}</div>
+    <p class="hint">Tap a photo to open it. Photos stay inside the app.</p>
     <button class="fab" data-act="upload" aria-label="Add photos">+</button>`;
   },
 
@@ -604,6 +621,30 @@ const actions = {
 
   // photos
   upload() { toast('Uploading comes in the next pass'); },
+  pfilter(b) { st.photoFilter = b.dataset.id; save(); render(); },
+  photo(b) {
+    const f = st.photoFilter || 'fav';
+    const list = PHOTOS.filter((p) => f === 'fav' || p.tag === f).sort((a, c) => heartsOf(c) - heartsOf(a));
+    let i = list.findIndex((p) => p.id === b.dataset.id);
+    const v = document.createElement('div'); v.className = 'viewer'; v.setAttribute('role', 'dialog'); v.setAttribute('aria-modal', 'true');
+    const draw = () => {
+      const p = list[i], on = !!(st.hearts || {})[p.id];
+      v.innerHTML = `<button class="v-close" aria-label="Close">×</button>
+        <div class="v-stage"><img src="${p.src}" alt="${esc(p.alt)}"></div>
+        ${i > 0 ? '<button class="v-nav prev" aria-label="Previous photo">‹</button>' : ''}${i < list.length - 1 ? '<button class="v-nav next" aria-label="Next photo">›</button>' : ''}
+        <div class="v-bar"><div><b>Photo by ${p.by}</b><span>${{ stages: 'Stages', crew: 'Crew', camp: 'Camp life' }[p.tag]} · ${i + 1} of ${list.length}</span></div>
+        <button class="v-heart${on ? ' on' : ''}" aria-pressed="${on}" aria-label="Heart this photo">♥ ${heartsOf(p)}</button></div>`;
+      v.querySelector('.v-close').onclick = () => { v.remove(); render(); };
+      const pv = v.querySelector('.prev'), nx = v.querySelector('.next');
+      if (pv) pv.onclick = () => { i--; draw(); };
+      if (nx) nx.onclick = () => { i++; draw(); };
+      v.querySelector('.v-heart').onclick = () => { st.hearts = st.hearts || {}; st.hearts[p.id] = !st.hearts[p.id]; save(); draw(); };
+    };
+    let x0 = null;
+    v.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+    v.addEventListener('touchend', (e) => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (dx > 50 && i > 0) { i--; draw(); } else if (dx < -50 && i < list.length - 1) { i++; draw(); } });
+    draw(); document.body.appendChild(v);
+  },
 
   // chat
   share(b) {
