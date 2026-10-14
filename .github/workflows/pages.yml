@@ -1,5 +1,6 @@
-# Publishes the Pitch In promo page at the site root and the prototype at /app to GitHub Pages.
-name: Deploy to GitHub Pages
+# Publishes the Pitch In promo page at the site root and the prototype at /app.
+# GitHub Pages serves the gh-pages branch; this rebuilds that branch on every relevant push.
+name: Publish to GitHub Pages
 
 on:
   push:
@@ -8,20 +9,15 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  publish:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -32,13 +28,12 @@ jobs:
           cp -r prototype/index.html prototype/app.css prototype/app.js prototype/sw.js prototype/manifest.webmanifest prototype/assets dist/app/
           touch dist/.nojekyll
 
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
-
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
-
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Push to gh-pages
+        run: |
+          cd dist
+          git init -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Publish ${GITHUB_SHA::7}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" gh-pages
