@@ -166,11 +166,12 @@ const cartTotal = () => st.cart.reduce((a, i) => a + PRODUCTS.find((p) => p.id =
 const cartCount = () => st.cart.reduce((a, i) => a + i.qty, 0);
 
 // ---------- page header ----------
+const SLIDERS = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h8M15 6h2M3 14h2M9 14h8"/><circle cx="13" cy="6" r="2"/><circle cx="7" cy="14" r="2"/></svg>';
 const DRIPS = PALETTE.concat(PALETTE).map((c, i) => `<i style="--c:${c};left:${4 + i * 8.2}%;--h:${6 + ((i * 7) % 5) * 3}px"></i>`).join('');
 let playing = null;
 const top = (title, sub) => `<header class="hdr">
   <div class="hdr-text"><h1>${title}</h1>${sub ? `<p class="sub">${sub}</p>` : ''}</div>
-  <button class="demo-pill${playing ? ' playing' : ''}" data-act="demo" aria-label="${playing ? 'Pause the demo clock' : 'Demo controls'}"><i></i>${clockLabel()}</button>
+  <button class="demo-pill${playing ? ' playing' : ''}${st.demoSeen ? '' : ' hint-pulse'}" data-act="demo" aria-label="${playing ? 'Pause the demo clock' : 'Demo controls: ' + clockLabel()}">${playing ? '<i class="pause"></i>' : SLIDERS}<span>${clockLabel()}</span>${playing ? '' : '<b class="chev" aria-hidden="true"></b>'}</button>
   <div class="drips" aria-hidden="true">${DRIPS}</div></header>`;
 
 const mosaic = (n) => {
@@ -263,9 +264,9 @@ const screens = {
   },
 
   photos() {
-    if (!signedIn()) return `${top('Freedom Fest album')}<div class="card"><h3>Sign in to see photos</h3><p class="sub">The album is for people at Freedom Fest. Photos never get public links.</p><div class="need-actions"><button class="btn small" data-act="signin">Sign in</button></div></div>`;
+    if (!signedIn()) return `${top('Photo album')}<div class="card"><h3>Sign in to see photos</h3><p class="sub">The album is for people at Freedom Fest. Photos never get public links.</p><div class="need-actions"><button class="btn small" data-act="signin">Sign in</button></div></div>`;
     const tiles = [['Sunset', '#F28B22,#D62B34'], ['Camp life', '#2DB36B,#1F3A27'], ['Kitchen', '#F9D84A,#F28B22'], ['Crew', '#2F63D6,#0B1328'], ['Shaman Stage', '#8F72F0,#2F63D6'], ['Kids’ area', '#45C4E8,#2DB36B'], ['Main Stage', '#D62B34,#8F72F0'], ['Night', '#141D3B,#8F72F0'], ['Sunday jam', '#F9D84A,#2DB36B']];
-    return `${top('Freedom Fest album', '2,418 photos from 312 people')}
+    return `${top('Photo album', '2,418 photos from 312 people')}
     <div class="chips"><button class="chip" aria-pressed="true">Crowd favorites</button><button class="chip">Friday</button><button class="chip">Saturday</button><button class="chip">Sunday</button><button class="chip">Monday</button></div>
     <div class="feat"><img src="assets/band.webp" alt="Singer in a white suit and hat raising a fist to a cheering night crowd"><span class="tag">Top photo</span><span class="hearts">♥ 214</span></div>
     <div class="grid">${tiles.map(([l, g]) => `<div class="tile" style="background:linear-gradient(135deg,${g})">${l}</div>`).join('')}</div>
@@ -419,6 +420,7 @@ function play() {
 const actions = {
   demo() {
     if (playing) { stopPlay(); toast('Clock paused'); return; }
+    if (!st.demoSeen) { st.demoSeen = true; save(); render(); }
     const roles = [['public', 'Public'], ['helper', 'Helper'], ['lead', 'Team lead'], ['stage', 'Stage mgr']];
     sheet(`<h2>Demo controls</h2>
       <h3 style="margin-top:12px">Clock: <span data-clock>${dayOf(st.now.day).name} ${fmt(st.now.min)}</span></h3>
